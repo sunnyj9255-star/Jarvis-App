@@ -61,9 +61,10 @@ class MainActivity : Activity(), RecognitionListener {
     }
 
     override fun onResult(h: String?) {
-        val text = JSONObject(h ?: return).optString("text")
-        val wake = wakeWords.firstOrNull { text.contains(it) } ?: return
-        val cmd = text.substringAfter(wake).trim()
+        val text = JSONObject(h ?: return).optString("text").trim()
+        val normalizedText = text.lowercase(Locale.getDefault())
+        val wake = wakeWords.firstOrNull { normalizedText.contains(it.lowercase(Locale.getDefault())) } ?: return
+        val cmd = normalizedText.substringAfter(wake.lowercase(Locale.getDefault())).trim()
         status.text = "Suna: $cmd"
         handle(cmd)
     }
@@ -77,7 +78,10 @@ class MainActivity : Activity(), RecognitionListener {
 
     private val wakeWords = listOf("jarvis", "जार्विस", "जारविस", "जर्विस", "जार्विज", "जारवि")
 
-    private fun has(c: String, vararg k: String) = k.any { c.contains(it) }
+    private fun has(c: String, vararg k: String): Boolean {
+        val normalizedInput = c.lowercase(Locale.getDefault())
+        return k.any { normalizedInput.contains(it.lowercase(Locale.getDefault())) }
+    }
 
     private fun handle(c: String) {
         val w = c.split(" ").filter { it.isNotBlank() }
@@ -128,11 +132,12 @@ class MainActivity : Activity(), RecognitionListener {
         "फोटो" to "photos", "संदेश" to "messages", "घड़ी" to "clock", "इंस्टाग्राम" to "instagram")
 
     private fun openApp(spoken: String) {
-        val key = aliases.entries.firstOrNull { spoken.contains(it.key) }?.value ?: spoken
+        val normalizedSpoken = spoken.lowercase(Locale.getDefault())
+        val key = aliases.entries.firstOrNull { normalizedSpoken.contains(it.key.lowercase(Locale.getDefault())) }?.value ?: normalizedSpoken
         val pm = packageManager
         val l = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val app = pm.queryIntentActivities(l, 0).firstOrNull {
-            it.loadLabel(pm).toString().lowercase().contains(key.lowercase())
+            it.loadLabel(pm).toString().lowercase(Locale.getDefault()).contains(key.lowercase(Locale.getDefault()))
         }
         val i = app?.let { pm.getLaunchIntentForPackage(it.activityInfo.packageName) }
         if (i != null) { startActivity(i); say("खोल रहा हूँ") } else say("ऐप नहीं मिला")
@@ -144,24 +149,20 @@ class MainActivity : Activity(), RecognitionListener {
             "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen")
         en.forEachIndexed { i, t -> put(t, i) }
         put("twenty",20); put("thirty",30); put("forty",40); put("fifty",50)
-        val hi = listOf("शून्य","एक","दो","तीन","चार","पांच","छह","सात","आठ","नौ","दस","ग्यारह","बारह","तेरह",
-            "चौदह","पंद्रह","सोलह","सत्रह","अठारह","उन्नीस","बीस","इक्कीस","बाईस","तेईस","चौबीस","पच्चीस",
-            "छब्बीस","सत्ताईस","अट्ठाईस","उनतीस","तीस","इकतीस","बत्तीस","तैंतीस","चौंतीस","पैंतीस","छत्तीस",
-            "सैंतीस","अड़तीस","उनतालीस","चालीस","इकतालीस","बयालीस","तैंतालीस","चौवालीस","पैंतालीस","छियालीस",
-            "सैंतालीस","अड़तालीस","उनचास","पचास")
+        val hi = listOf("शून्य","एक","दो","तीन","चार","पांच","छह","सात","आठ","नौ","दस","ग्यारह","बारह","तेरह","चौदह","पंद्रह","सोलह","सत्रह","अठारह","उन्नीस","बीस","इक्कीस","बाईस","तेईस","चौबीस","पच्चीस","छब्बीस","सत्ताईस","अट्ठाईस","उनतीस","तीस","इकतीस","बत्तीस","तैंतीस","चौंतीस","चौतीस","पैंतीस","छत्तीस","सैंतीस","अड़तीस","उनतालीस","चालीस","इकतालीस","बयालीस","तैंतालीस","चौवालीस","पैंतालीस","सैंतालीस","अड़तालीस","उनचास","पचास")
         hi.forEachIndexed { i, t -> put(t, i) }
         put("पाँच",5); put("छः",6); put("छे",6); put("छ",6); put("पन्द्रह",15); put("नो",9)
     }
 
-    private fun digitOf(s: String): Int? = (numMap[s] ?: s.toIntOrNull())?.takeIf { it in 0..9 }
+    private fun digitOf(s: String): Int? = (numMap[s.lowercase(Locale.getDefault())] ?: s.lowercase(Locale.getDefault()).toIntOrNull())?.takeIf { it in 0..9 }
 
     private fun numbers(w: List<String>): List<Int> {
         val out = mutableListOf<Int>(); var i = 0
         while (i < w.size) {
-            val t = w[i]
+            val t = w[i].lowercase(Locale.getDefault())
             var v = t.toIntOrNull() ?: numMap[t]
             if (v != null && t in listOf("twenty","thirty","forty","fifty")) {
-                val d = w.getOrNull(i + 1)?.let { numMap[it] } ?: -1
+                val d = w.getOrNull(i + 1)?.lowercase(Locale.getDefault())?.let { numMap[it] } ?: -1
                 if (d in 1..9) { v += d; i++ }
             }
             if (v != null) out.add(v)
